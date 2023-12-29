@@ -1,7 +1,6 @@
-Sievert’s Surface:
-- Spotlight
-- Gouraud shading
-- Perspective projection
-- Normals analytic calculation
+Added new functionality:
 
-![](https://github.com/maxxus13/vggi/blob/PA2/PA2.gif)
+Animated lighting.
+Spotlight position and direction visualization.
+
+![](https://github.com/maxxus13/vggi/blob/PA3/PA3.gif)
