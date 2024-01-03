@@ -1,0 +1,105 @@
+// Vertex shader
+const vertexShaderSource = `
+attribute vec3 vertex;
+attribute vec3 normal;
+attribute vec2 textCoord;
+
+uniform mat4 ModelViewProjectionMatrix;
+uniform mat4 ModelNormalMatrix;
+uniform vec3 lightPosition;
+varying vec3 normalInter;
+varying vec3 vertexPosition;
+float Ka = 0.5;
+float Kd = 0.5;
+float Ks = 0.5;
+float shininessVal = 80.0;
+vec3 ambientColor = vec3(1.0, 1.0, 1.0); 
+vec3 diffuseColor = vec3(1.0, 1.0, 1.0);   
+vec3 specularColor = vec3(0.0, 0.0, 0.0);
+uniform vec3 spotDirection;
+uniform float spotCutoff;
+uniform float spotExponent;
+
+varying vec4 color;
+varying vec2 textInterp; 
+uniform float angleInRadians;
+uniform vec2 userPoint;
+
+mat4 rotate(float angleInRadians) {
+    float c = cos(angleInRadians);
+    float s = sin(angleInRadians);
+
+    return mat4(
+         c,   s, 0.0, 0.0,
+        -s,   c, 0.0, 0.0,
+        0.0, 0.0, 1.0, 0.0,
+        0.0, 0.0, 0.0, 1.0
+    );
+}
+
+mat4 translate(float tx, float ty) {
+    return mat4(
+        1.0, 0.0, 0.0, 0.0,
+        0.0, 1.0, 0.0, 0.0,
+        0.0, 0.0, 1.0, 0.0,
+        tx,  ty,  0.0, 1.0
+    );
+}
+
+void main() {
+    vec4 vertex4 = ModelViewProjectionMatrix * vec4(vertex, 1.0);
+    vertexPosition = vec3(vertex4) / vertex4.w;
+    normalInter = vec3(ModelNormalMatrix * vec4(normal, 0.0));
+
+    vec3 N = normalize(normalInter);
+    vec3 L = normalize(lightPosition - vertexPosition);
+
+    float lambertian = max(dot(N, L), 0.0);
+    float specular = 0.5;
+
+    if (lambertian > 0.0) {
+        vec3 R = reflect(-L, N);
+        vec3 V = normalize(-vertexPosition);
+
+        float specAngle = max(dot(R, V), 0.0);
+        specular = pow(specAngle, shininessVal);
+    }
+	
+	mat4 rotateMat = rotate(angleInRadians);
+    mat4 translateMat = translate(-userPoint.x, -userPoint.y);
+    mat4 translateMatBack = translate(userPoint.x, userPoint.y);
+
+    // Spotlight calculations
+    vec3 lightDir = normalize(lightPosition - vertexPosition);
+    float spotEffect = dot(normalize(spotDirection), -lightDir);
+    float spotIntensity = smoothstep(spotCutoff, spotCutoff + 0.1, spotEffect);
+
+    color = vec4(Ka * ambientColor + Kd * lambertian * spotIntensity * diffuseColor + Ks * specular * specularColor, 1.0);
+
+    gl_Position = vertex4;
+	
+	vec4 textCoordTr = translateMat*vec4(textCoord,0,1.0);
+    vec4 textCoordRotated = rotateMat*textCoordTr;
+    vec4 textCoordTrBack = translateMatBack*textCoordRotated;
+
+    textInterp = textCoordTrBack.xy;
+}`;
+
+
+
+// Fragment shader
+const fragmentShaderSource = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+   precision highp float;
+#else
+   precision mediump float;
+#endif
+
+varying vec4 color;
+varying vec2 textInterp; 
+uniform sampler2D tmu;
+
+void main() {
+    vec4 textColor = texture2D(tmu, textInterp);
+    gl_FragColor = color * textColor;
+}`;
